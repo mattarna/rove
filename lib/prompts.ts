@@ -25,6 +25,11 @@ export function getAgentSystemPrompt(agent: AgentName): string {
   const verticalKbContent = loadKnowledgeBase(kbFile);
 
   const formattingInstruction = `
+[LANGUAGE RULES]
+- Match the user's language in every reply (Italian, English, etc.).
+- If the user's language is unclear, default to English.
+- The knowledge base may be in English; still answer in the user's language.
+
 [FORMATTING RULES]
 - Keep each response SHORT: maximum 3-4 sentences.
 - You are in a CHAT, not writing an email. Be conversational and concise.

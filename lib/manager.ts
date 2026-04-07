@@ -4,11 +4,11 @@ import { getManagerModel } from './llm-client';
 import { loadKnowledgeBase } from './kb';
 import { isValidAgent } from './agents';
 
-/** When these match, intent likely needs full manager routing (handoff). */
+/** When these match, intent likely needs full manager routing (handoff). IT + EN. */
 const SUPPORT_HINTS =
-  /rimborso|reclamo|problema|non\s+funziona|volo\s+cancell|cancellat|assistenza|post[\s-]?vendita|ho\s+gi[aà]\s+(comprat|acquist|prenot)|prenotazione\s+confermata|bagaglio\s+perso|check-?in/i;
+  /rimborso|reclamo|problema|non\s+funziona|volo\s+cancell|cancellat|assistenza|post[\s-]?vendita|ho\s+gi[aà]\s+(comprat|acquist|prenot)|prenotazione\s+confermata|bagaglio\s+perso|check-?in|refund|complaint|problem|after[\s-]?sales|already\s+(bought|booked)|lost\s+luggage|confirmed\s+booking/i;
 const SALES_HINTS =
-  /prezz|costo|€|\beuro\b|prenot|compr|pacchett|offerta|sconto|pagament|quotaz|acconto/i;
+  /prezz|costo|€|\beuro\b|prenot|compr|pacchett|offerta|sconto|pagament|quotaz|acconto|price|cost|\$|\busd\b|\beur\b|book|buy|package|offer|discount|payment|deposit|quot(e|ation)/i;
 
 /**
  * Skip the manager LLM when the active agent is likely correct and the user
@@ -35,7 +35,11 @@ export function tryFastRoute(
   }
 
   if (active === 'support') {
-    if (/nuovo\s+viaggio|altro\s+viaggio|da\s+capopartire|ricominciare/i.test(userMessage)) {
+    if (
+      /nuovo\s+viaggio|altro\s+viaggio|da\s+capo|ripartire|ricominciare|new\s+trip|start\s+over|another\s+trip|from\s+scratch/i.test(
+        userMessage
+      )
+    ) {
       return null;
     }
     return 'support';

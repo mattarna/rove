@@ -25,7 +25,7 @@ export default function ChatInput({
         value={input}
         onChange={(e) => setInput(e.target.value)}
         disabled={isLoading}
-        placeholder="Raccontami il tuo viaggio ideale..."
+        placeholder="Tell me about your ideal trip..."
         className="flex-1 px-6 py-4 bg-slate-100/50 border border-transparent focus:border-indigo-200 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/5 rounded-2xl transition-all duration-200 disabled:opacity-50 text-slate-800 placeholder-slate-400"
       />
       <button
@@ -33,7 +33,7 @@ export default function ChatInput({
         disabled={isLoading || !input.trim()}
         className="px-8 py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 active:scale-95 disabled:opacity-30 disabled:hover:bg-indigo-600 disabled:scale-100 transition-all duration-200 shadow-lg shadow-indigo-200"
       >
-        Invia
+        Send
       </button>
     </form>
   );

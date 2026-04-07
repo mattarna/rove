@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { ChatMessage, AgentName } from '@/lib/types';
+import { isValidAgent } from '@/lib/agents';
 import ChatWindow from '@/components/ChatWindow';
 
 const WELCOME_MESSAGE: ChatMessage = {
   role: 'assistant',
-  content: 'Ciao! Sono entusiasta di aiutarti a trovare il viaggio perfetto. Dimmi, che tipo di esperienza stai sognando?',
+  content:
+    "Hi! I'm excited to help you find the perfect trip. What kind of experience are you dreaming of?",
   agent: 'discovery',
 };
 
@@ -41,8 +43,9 @@ export default function Home() {
   }, [messages, currentAgent]);
 
   const handleReset = () => {
-    if (confirm('Sei sicuro di voler ricominciare la conversazione?')) {
-      sessionStorage.clear();
+    if (confirm('Start a new conversation? This will clear the current chat.')) {
+      sessionStorage.removeItem('rove-messages');
+      sessionStorage.removeItem('rove-agent');
       window.location.reload();
     }
   };
@@ -67,9 +70,11 @@ export default function Home() {
         signal: abortController.signal,
       });
 
-      if (!response.ok) throw new Error('Errore tecnico.');
+      if (!response.ok) throw new Error('Technical error.');
 
-      agentForReply = (response.headers.get('X-Agent') as AgentName) || currentAgent;
+      const headerAgent = response.headers.get('X-Agent');
+      agentForReply =
+        headerAgent && isValidAgent(headerAgent) ? headerAgent : currentAgent;
       setCurrentAgent(agentForReply);
       setLoadingPhase('generating');
 
@@ -120,7 +125,7 @@ export default function Home() {
         if (last?.role === 'assistant' && !last.content.trim()) {
           return [
             ...prev.slice(0, -1),
-            { ...last, content: 'Non ho ricevuto una risposta. Riprova.' },
+            { ...last, content: 'No response received. Please try again.' },
           ];
         }
         return prev;
@@ -133,8 +138,8 @@ export default function Home() {
           last?.role === 'assistant' && !last.content?.trim();
         const errText =
           error instanceof Error && error.name === 'AbortError'
-            ? 'La richiesta ha impiegato troppo tempo. Riprova.'
-            : 'Errore tecnico. Riprova.';
+            ? 'That took too long. Please try again.'
+            : 'Something went wrong. Please try again.';
         if (emptyAssistant) {
           return [
             ...p.slice(0, -1),

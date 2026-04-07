@@ -24,7 +24,7 @@ export default function PackageCard({ pkg }: { pkg: PackageData }) {
           </span>
           <div className="text-right">
             <div className="text-lg font-bold text-gray-900 leading-none">€{pkg.price}</div>
-            <div className="text-[10px] text-gray-400 uppercase font-semibold">Prezzo a persona</div>
+            <div className="text-[10px] text-gray-400 uppercase font-semibold">Per person</div>
           </div>
         </div>
         <h3 className="text-xl font-bold text-gray-800 mb-2 truncate">{pkg.name}</h3>
@@ -53,7 +53,7 @@ export default function PackageCard({ pkg }: { pkg: PackageData }) {
           className="w-full py-3 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95"
           style={{ backgroundColor: accentColor }}
         >
-          {pkg.cta || 'Scopri disponibilità'}
+          {pkg.cta || 'Check availability'}
         </button>
       </div>
     </div>

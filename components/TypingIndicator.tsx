@@ -5,7 +5,7 @@ import AgentIndicator from './AgentIndicator';
 
 export default function TypingIndicator({ 
   agentName, 
-  message = "Analizzando richiesta..." 
+  message = 'Analyzing request...'
 }: { 
   agentName?: AgentName, 
   message?: string 
