@@ -94,8 +94,13 @@ export default function Home() {
       }
       
       // Handle remaining buffer
-      if (buffer.startsWith('0:')) {
-         try { appendChunkToLastMessage(JSON.parse(buffer.substring(2))); } catch (e) {}
+      if (buffer.trim()) {
+        if (buffer.startsWith('0:')) {
+           try { appendChunkToLastMessage(JSON.parse(buffer.substring(2))); } catch (e) {}
+        } else if (!buffer.match(/^[0-9]:/)) {
+           // If it doesn't match any marker, treat as raw text
+           appendChunkToLastMessage(buffer);
+        }
       }
 
     } catch (error: any) {
