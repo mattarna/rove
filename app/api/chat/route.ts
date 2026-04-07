@@ -24,11 +24,17 @@ export async function POST(req: Request) {
     const truncatedMessages = truncateHistory(messages, 20);
     const systemMessage = getAgentSystemPrompt(selectedAgent);
 
+    // Strip custom properties (like 'agent') to comply with AI SDK Core message format
+    const cleanMessages = truncatedMessages.map(({ role, content }) => ({
+      role,
+      content,
+    }));
+
     // Make the LLM call using streamText for the selected agent
     const result = streamText({
       model: getAgentModel(),
       system: systemMessage,
-      messages: truncatedMessages,
+      messages: cleanMessages,
     });
 
     return result.toTextStreamResponse({

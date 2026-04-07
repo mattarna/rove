@@ -115,7 +115,7 @@
 
 ---
 
-## [ ] Sprint 6 — Deploy to Vercel
+## [x] Sprint 6 — Deploy to Vercel
 
 **Objective:** Deploy the chatbot to Vercel with a working public URL. At the end of this sprint, anyone can open the URL and interact with the ROVE chatbot.
 

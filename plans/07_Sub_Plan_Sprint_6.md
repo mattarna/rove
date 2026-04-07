@@ -12,7 +12,7 @@
 
 ---
 
-### [ ] Task 6.1 — Verify .gitignore is complete
+### [x] Task 6.1 — Verify .gitignore is complete
 
 **Files involved:** `/.gitignore` (verify)
 
@@ -34,7 +34,7 @@ If any entries are missing, add them.
 
 ---
 
-### [ ] Task 6.2 — Run production build and fix errors
+### [x] Task 6.2 — Run production build and fix errors
 
 **Files involved:** All project files (no specific modifications expected).
 
@@ -63,7 +63,7 @@ Common build issues to watch for:
 
 ---
 
-### [ ] Task 6.3 — Initialize Git repository and create initial commit
+### [x] Task 6.3 — Initialize Git repository and create initial commit
 
 **Files involved:** All project files.
 
@@ -83,7 +83,7 @@ git commit -m "Initial commit: ROVE multi-agent chatbot"
 
 ---
 
-### [ ] Task 6.4 — Push to GitHub
+### [x] Task 6.4 — Push to GitHub
 
 **Files involved:** No file changes. Git operations only.
 
@@ -104,7 +104,7 @@ git push -u origin main
 
 ---
 
-### [ ] Task 6.5 — Deploy to Vercel
+### [x] Task 6.5 — Deploy to Vercel
 
 **Files involved:** No file changes. Vercel dashboard operations.
 
@@ -127,7 +127,7 @@ git push -u origin main
 
 ---
 
-### [ ] Task 6.6 — Configure Vercel function timeout (if needed)
+### [x] Task 6.6 — Configure Vercel function timeout (if needed)
 
 **Files involved:** `/vercel.json` (create new, only if needed)
 
@@ -158,7 +158,7 @@ Vercel will auto-redeploy on push.
 
 ---
 
-### [ ] Task 6.7 — Security verification on deployed site
+### [x] Task 6.7 — Security verification on deployed site
 
 **Files involved:** No file changes. Browser verification only.
 
@@ -185,7 +185,7 @@ Vercel will auto-redeploy on push.
 
 ---
 
-### [ ] Task 6.8 — Smoke test on live URL
+### [x] Task 6.8 — Smoke test on live URL
 
 **Files involved:** No file changes. Testing via the deployed application.
 
