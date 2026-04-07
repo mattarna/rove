@@ -72,32 +72,39 @@ export default function Home() {
 
       let buffer = '';
       while (true) {
+
         const { done, value } = await reader.read();
         if (done) break;
         
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        
+        // Process all available lines in the buffer
+        let lastNewLineIndex;
+        while ((lastNewLineIndex = buffer.indexOf('\n')) !== -1) {
+          const line = buffer.slice(0, lastNewLineIndex).trim();
+          buffer = buffer.slice(lastNewLineIndex + 1);
 
-        for (const line of lines) {
           if (line.startsWith('0:')) {
             try {
               const text = JSON.parse(line.substring(2));
               appendChunkToLastMessage(text);
             } catch (e) {}
-          } else if (line.trim() && !line.match(/^[0-9]:/)) {
+          } else if (line.length > 0 && !line.match(/^[0-9]:/)) {
             appendChunkToLastMessage(line + '\n');
           }
         }
       }
-      
+
+      // Handle any remaining content in buffer (e.g. final token without \n)
       if (buffer.trim()) {
-        if (buffer.startsWith('0:')) {
-           try { appendChunkToLastMessage(JSON.parse(buffer.substring(2))); } catch (e) {}
-        } else if (!buffer.match(/^[0-9]:/)) {
-           appendChunkToLastMessage(buffer);
+        const line = buffer.trim();
+        if (line.startsWith('0:')) {
+          try { appendChunkToLastMessage(JSON.parse(line.substring(2))); } catch (e) {}
+        } else if (!line.match(/^[0-9]:/)) {
+          appendChunkToLastMessage(line);
         }
       }
+
 
     } catch (error: any) {
       console.error(error);
