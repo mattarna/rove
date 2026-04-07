@@ -34,23 +34,46 @@ export default function Home() {
         body: JSON.stringify({ messages: newMessages, currentAgent }),
       });
 
-      const data = await response.json().catch(() => ({}));
-
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Mi scuso, ho un problema tecnico. Riprova tra un momento.');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Errore tecnico durante la chiamata.');
       }
 
-      setLoadingPhase('idle');
-      const agentName = (data.agent || currentAgent) as AgentName;
+      setLoadingPhase('generating');
+
+      const agentNameFromHeader = response.headers.get('X-Agent-Name') as AgentName;
+      const agentName = agentNameFromHeader || currentAgent;
       setCurrentAgent(agentName);
 
-      const assistantMessage: ChatMessage = {
-        role: 'assistant',
-        content: data.message,
-        agent: agentName,
-      };
+      // Create an empty assistant message entry to stream into
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: '', agent: agentName },
+      ]);
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      if (!response.body) throw new Error("No response body stream");
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+        for (const line of lines) {
+          // AI SDK protocol parsing (0:"...") or raw text (fallback)
+          if (line.startsWith('0:')) {
+            try {
+              const text = JSON.parse(line.substring(2));
+              appendChunkToLastMessage(text);
+            } catch { /* ignore bad json in protocol */ }
+          } else if (!line.match(/^[0-9]:/)) {
+            appendChunkToLastMessage(line);
+          }
+        }
+      }
 
     } catch (error: any) {
       console.error("Chat Error:", error);
@@ -65,6 +88,17 @@ export default function Home() {
     }
   };
 
+  const appendChunkToLastMessage = (chunk: string) => {
+    setMessages((prev) => {
+      const updated = [...prev];
+      const lastIdx = updated.length - 1;
+      updated[lastIdx] = {
+        ...updated[lastIdx],
+        content: updated[lastIdx].content + chunk,
+      };
+      return updated;
+    });
+  };
 
   return (
     <main className="max-w-2xl mx-auto h-screen p-0 md:p-8">
@@ -77,4 +111,3 @@ export default function Home() {
     </main>
   );
 }
-

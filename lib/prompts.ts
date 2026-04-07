@@ -43,4 +43,3 @@ ${sharedKbContent}
 [SPECIALIST KNOWLEDGE BASE]
 ${verticalKbContent}`;
 }
-
