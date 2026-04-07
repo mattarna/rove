@@ -55,7 +55,7 @@ export default function ChatWindow({
         {loadingPhase === 'routing' && (
           <TypingIndicator message="Rove sta pensando..." />
         )}
-        {(loadingPhase === 'generating' || (messages[messages.length - 1]?.role === 'assistant' && !messages[messages.length - 1]?.content)) && (
+        {loadingPhase === 'generating' && (
           <TypingIndicator agentName={currentAgent} message="L'agente sta scrivendo..." />
         )}
         <div ref={messagesEndRef} />

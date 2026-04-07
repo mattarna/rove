@@ -12,6 +12,9 @@ const WELCOME_MESSAGE: ChatMessage = {
 
 export type LoadingPhase = 'idle' | 'routing' | 'generating';
 
+/** Client-side cap for hung connections (manager + full stream). */
+const CHAT_FETCH_TIMEOUT_MS = 90_000;
+
 export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (typeof window !== 'undefined') {
@@ -51,65 +54,70 @@ export default function Home() {
     setMessages(newMessages);
     setLoadingPhase('routing');
 
+    let agentForReply: AgentName = currentAgent;
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), CHAT_FETCH_TIMEOUT_MS);
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: newMessages, currentAgent }),
+        signal: abortController.signal,
       });
 
       if (!response.ok) throw new Error('Errore tecnico.');
 
-      const agent = response.headers.get('X-Agent') as AgentName || currentAgent;
-      setCurrentAgent(agent);
+      agentForReply = (response.headers.get('X-Agent') as AgentName) || currentAgent;
+      setCurrentAgent(agentForReply);
       setLoadingPhase('generating');
 
-      setMessages(prev => [...prev, { role: 'assistant', content: '', agent }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: '', agent: agentForReply }]);
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
-      if (!reader) throw new Error("No reader");
+      if (!reader) throw new Error('No reader');
 
-      let buffer = '';
+      // toTextStreamResponse: plain UTF-8 text chunks — append every delta immediately
       while (true) {
-
         const { done, value } = await reader.read();
         if (done) break;
-        
-        buffer += decoder.decode(value, { stream: true });
-        
-        // Process all available lines in the buffer
-        let lastNewLineIndex;
-        while ((lastNewLineIndex = buffer.indexOf('\n')) !== -1) {
-          const line = buffer.slice(0, lastNewLineIndex).trim();
-          buffer = buffer.slice(lastNewLineIndex + 1);
-
-          if (line.startsWith('0:')) {
-            try {
-              const text = JSON.parse(line.substring(2));
-              appendChunkToLastMessage(text);
-            } catch (e) {}
-          } else if (line.length > 0 && !line.match(/^[0-9]:/)) {
-            appendChunkToLastMessage(line + '\n');
-          }
-        }
+        const chunk = decoder.decode(value, { stream: true });
+        if (chunk) appendChunkToLastMessage(chunk);
       }
+      const tail = decoder.decode();
+      if (tail) appendChunkToLastMessage(tail);
 
-      // Handle any remaining content in buffer (e.g. final token without \n)
-      if (buffer.trim()) {
-        const line = buffer.trim();
-        if (line.startsWith('0:')) {
-          try { appendChunkToLastMessage(JSON.parse(line.substring(2))); } catch (e) {}
-        } else if (!line.match(/^[0-9]:/)) {
-          appendChunkToLastMessage(line);
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === 'assistant' && !last.content.trim()) {
+          return [
+            ...prev.slice(0, -1),
+            { ...last, content: 'Non ho ricevuto una risposta. Riprova.' },
+          ];
         }
-      }
-
-
-    } catch (error: any) {
+        return prev;
+      });
+    } catch (error: unknown) {
       console.error(error);
-      setMessages(p => [...p, { role: 'assistant', content: 'Errore tecnico. Riprova.', agent: currentAgent }]);
+      setMessages((p) => {
+        const last = p[p.length - 1];
+        const emptyAssistant =
+          last?.role === 'assistant' && !last.content?.trim();
+        const errText =
+          error instanceof Error && error.name === 'AbortError'
+            ? 'La richiesta ha impiegato troppo tempo. Riprova.'
+            : 'Errore tecnico. Riprova.';
+        if (emptyAssistant) {
+          return [
+            ...p.slice(0, -1),
+            { role: 'assistant', content: errText, agent: agentForReply },
+          ];
+        }
+        return [...p, { role: 'assistant', content: errText, agent: agentForReply }];
+      });
     } finally {
+      clearTimeout(timeoutId);
       setLoadingPhase('idle');
     }
   };

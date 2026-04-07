@@ -4,6 +4,46 @@ import { getManagerModel } from './llm-client';
 import { loadKnowledgeBase } from './kb';
 import { isValidAgent } from './agents';
 
+/** When these match, intent likely needs full manager routing (handoff). */
+const SUPPORT_HINTS =
+  /rimborso|reclamo|problema|non\s+funziona|volo\s+cancell|cancellat|assistenza|post[\s-]?vendita|ho\s+gi[aà]\s+(comprat|acquist|prenot)|prenotazione\s+confermata|bagaglio\s+perso|check-?in/i;
+const SALES_HINTS =
+  /prezz|costo|€|\beuro\b|prenot|compr|pacchett|offerta|sconto|pagament|quotaz|acconto/i;
+
+/**
+ * Skip the manager LLM when the active agent is likely correct and the user
+ * did not introduce obvious handoff signals. Returns null to run full routing.
+ */
+export function tryFastRoute(
+  userMessage: string,
+  currentAgent: AgentName | null
+): AgentName | null {
+  const active: AgentName = currentAgent || 'discovery';
+
+  if (active === 'discovery') {
+    if (SUPPORT_HINTS.test(userMessage) || SALES_HINTS.test(userMessage)) {
+      return null;
+    }
+    return 'discovery';
+  }
+
+  if (active === 'sales') {
+    if (SUPPORT_HINTS.test(userMessage)) {
+      return null;
+    }
+    return 'sales';
+  }
+
+  if (active === 'support') {
+    if (/nuovo\s+viaggio|altro\s+viaggio|da\s+capopartire|ricominciare/i.test(userMessage)) {
+      return null;
+    }
+    return 'support';
+  }
+
+  return null;
+}
+
 /**
  * Returns the Manager Agent system prompt from docs/10_Manager_Prompt.md.
  */
@@ -71,6 +111,11 @@ export async function routeMessage(
   history: ChatMessage[]
 ): Promise<AgentName> {
   const fallback: AgentName = currentAgent || 'discovery';
+
+  const fast = tryFastRoute(userMessage, currentAgent);
+  if (fast !== null) {
+    return fast;
+  }
 
   try {
     // Use only the last 10 messages for the Manager — lightweight routing call
