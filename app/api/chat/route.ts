@@ -7,7 +7,7 @@ import { routeMessage } from '@/lib/manager';
 
 export async function POST(req: Request) {
   // Check for API Keys
-  if (!process.env.ANTHROPIC_API_KEY && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     return NextResponse.json({ 
       error: 'API Key missing. Please configure GOOGLE_GENERATIVE_AI_API_KEY in Vercel.' 
     }, { status: 500 });
@@ -28,8 +28,8 @@ export async function POST(req: Request) {
     const selectedAgent = await routeMessage(latestUserMessage, currentAgent, historyForManager);
 
     // Step 2 - Agent generating response (streaming)
-    const truncatedMessages = truncateHistory(messages, 20);
-    const systemMessage = getAgentSystemPrompt(selectedAgent);
+    const systemPrompt = getAgentSystemPrompt(selectedAgent);
+    const truncatedMessages = truncateHistory(messages, 10);
 
     const cleanMessages = truncatedMessages.map(({ role, content }) => ({
       role: role as 'user' | 'assistant',
@@ -38,17 +38,20 @@ export async function POST(req: Request) {
 
     const result = streamText({
       model: getAgentModel(),
-      system: systemMessage,
+      system: systemPrompt,
       messages: cleanMessages,
     });
 
-    return result.toTextStreamResponse({
+    // Return simple text stream response as requested in the brief
+    return new Response(result.textStream, {
       headers: {
-        'X-Agent-Name': selectedAgent,
+        'Content-Type': 'text/plain; charset=utf-8',
+        'X-Agent': selectedAgent,
         'X-Agent-Color': AGENT_COLORS[selectedAgent] || AGENT_COLORS.discovery,
         'Cache-Control': 'no-cache',
       },
     });
+
   } catch (error: any) {
     console.error("API Route Error:", error);
     return NextResponse.json({ 

@@ -26,11 +26,16 @@ export function getAgentSystemPrompt(agent: AgentName): string {
 
   const formattingInstruction = `
 [FORMATTING RULES]
-- Use Markdown for bold (**text**), lists (* item), and headings.
-- Use VERY FEW emojis (max 1 or 2 per message).
-- Keep the tone professional but welcoming.
-- Ensure the output is clean and easy to read.
+- Keep each response SHORT: maximum 3-4 sentences.
+- You are in a CHAT, not writing an email. Be conversational and concise.
+- Ask ONE question at a time. Never stack multiple questions in one message.
+- Use line breaks between distinct thoughts (separate paragraphs).
+- Use **bold** for destination names and key terms only.
+- Use VERY FEW emojis (max 1 per message, only if natural).
+- NEVER dump all information at once. Reveal progressively across multiple exchanges.
+- If you need to mention multiple destinations, keep it brief: name them with one line each, then ask which interests them most.
 `;
+
 
   return `[SYSTEM PROMPT]
 ${systemPromptContent}

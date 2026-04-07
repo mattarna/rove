@@ -40,16 +40,12 @@ export default function Home() {
 
   const handleReset = () => {
     if (confirm('Sei sicuro di voler ricominciare la conversazione?')) {
-      sessionStorage.removeItem('rove-messages');
-      sessionStorage.removeItem('rove-agent');
-      setMessages([WELCOME_MESSAGE]);
-      setCurrentAgent('discovery');
-      setLoadingPhase('idle');
+      sessionStorage.clear();
+      window.location.reload();
     }
   };
 
   const handleSend = async (messageContent: string) => {
-
     if (!messageContent.trim()) return;
 
     const newUserMessage: ChatMessage = { role: 'user', content: messageContent };
@@ -60,51 +56,36 @@ export default function Home() {
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ messages: newMessages, currentAgent }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: newMessages,
+          currentAgent,
+        }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Errore tecnico durante la chiamata.');
+        throw new Error('Errore tecnico durante la chiamata.');
       }
 
+      const agent = response.headers.get('X-Agent') as AgentName || currentAgent;
+      setCurrentAgent(agent);
       setLoadingPhase('generating');
 
-      const agentNameFromHeader = response.headers.get('X-Agent-Name') as AgentName;
-      const agentName = agentNameFromHeader || currentAgent;
-      setCurrentAgent(agentName);
+      // Create empty assistant message, then fill it as stream arrives
+      const assistantMessage: ChatMessage = { role: 'assistant', content: '', agent };
+      setMessages(prev => [...prev, assistantMessage]);
 
-      // Create an empty assistant message entry to stream into
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: '', agent: agentName },
-      ]);
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
 
-      if (!response.body) throw new Error("No response body stream");
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
+      if (!reader) throw new Error("No response reader");
 
       while (true) {
-        const { value, done } = await reader.read();
+        const { done, value } = await reader.read();
         if (done) break;
-
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').filter(line => line.trim() !== '');
-
-        for (const line of lines) {
-          // AI SDK protocol parsing (0:"...") or raw text (fallback)
-          if (line.startsWith('0:')) {
-            try {
-              const text = JSON.parse(line.substring(2));
-              appendChunkToLastMessage(text);
-            } catch { /* ignore bad json in protocol */ }
-          } else if (!line.match(/^[0-9]:/)) {
-            appendChunkToLastMessage(line);
-          }
-        }
+        
+        appendChunkToLastMessage(chunk);
       }
 
     } catch (error: any) {
@@ -142,6 +123,5 @@ export default function Home() {
         onReset={handleReset}
       />
     </main>
-
   );
 }
