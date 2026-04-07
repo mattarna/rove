@@ -7,8 +7,9 @@
 
 // --- GEMINI (Google) ---
 import { google } from '@ai-sdk/google';
-export const getManagerModel = () => google('gemini-1.5-flash');
-export const getAgentModel = () => google('gemini-1.5-flash');
+export const getManagerModel = () => google('gemini-2.0-flash');
+export const getAgentModel = () => google('gemini-2.5-flash');
+
 
 // --- GPT (OpenAI) ---
 // import { openai } from '@ai-sdk/openai';
