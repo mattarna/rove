@@ -34,69 +34,23 @@ export default function Home() {
         body: JSON.stringify({ messages: newMessages, currentAgent }),
       });
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Mi scuso, ho un problema tecnico. Riprova tra un momento.');
+        throw new Error(data.error || data.message || 'Mi scuso, ho un problema tecnico. Riprova tra un momento.');
       }
 
-      setLoadingPhase('generating');
-
-      const agentName = (response.headers.get('X-Agent-Name') || currentAgent) as AgentName;
+      setLoadingPhase('idle');
+      const agentName = (data.agent || currentAgent) as AgentName;
       setCurrentAgent(agentName);
 
-      // Create an empty assistant message entry
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: '', agent: agentName },
-      ]);
+      const assistantMessage: ChatMessage = {
+        role: 'assistant',
+        content: data.message,
+        agent: agentName,
+      };
 
-      if (!response.body) throw new Error("No response body stream");
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        
-        // The Vercel AI SDK protocol sends data as: 0:"message content here"
-        // We need to parse these chunks or simply strip the protocol prefix if present
-        const lines = chunk.split('\n').filter(line => line.trim() !== '');
-        
-        for (const line of lines) {
-          // If the line starts with 0: (text chunk in Vercel protocol)
-          if (line.startsWith('0:')) {
-            try {
-              const text = JSON.parse(line.substring(2));
-              setMessages((prev) => {
-                const updated = [...prev];
-                const lastIdx = updated.length - 1;
-                updated[lastIdx] = {
-                  ...updated[lastIdx],
-                  content: updated[lastIdx].content + text,
-                };
-                return updated;
-              });
-            } catch {
-              // Fallback if JSON parse fails
-              continue;
-            }
-          } 
-          // If it's a raw text chunk (no protocol)
-          else if (!line.match(/^[0-9]:/)) {
-            setMessages((prev) => {
-              const updated = [...prev];
-              const lastIdx = updated.length - 1;
-              updated[lastIdx] = {
-                ...updated[lastIdx],
-                content: updated[lastIdx].content + line,
-              };
-              return updated;
-            });
-          }
-        }
-      }
+      setMessages((prev) => [...prev, assistantMessage]);
 
     } catch (error: any) {
       console.error("Chat Error:", error);
@@ -110,6 +64,7 @@ export default function Home() {
       setLoadingPhase('idle');
     }
   };
+
 
   return (
     <main className="max-w-2xl mx-auto h-screen p-0 md:p-8">

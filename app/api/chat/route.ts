@@ -33,31 +33,34 @@ export async function POST(req: Request) {
 
     // Clean messages to strict role/content format
     const cleanMessages = truncatedMessages.map(({ role, content }) => ({
-      role,
+      role: role as 'user' | 'assistant',
       content,
     }));
 
-    const result = streamText({
+    // Step 2 - Agent generating response (NON-STREAMING for debug)
+    const result = await generateText({
       model: getAgentModel(),
       system: systemMessage,
       messages: cleanMessages,
     });
 
-    return result.toTextStreamResponse({
+    return NextResponse.json({
+      agent: selectedAgent,
+      message: result.text,
+      color: AGENT_COLORS[selectedAgent] || AGENT_COLORS.discovery
+    }, {
       headers: {
-        'X-Agent-Name': selectedAgent,
-        'X-Agent-Color': AGENT_COLORS[selectedAgent] || AGENT_COLORS.discovery,
         'Cache-Control': 'no-cache',
-      },
+      }
     });
   } catch (error) {
-
     console.error("API Route Error:", error);
     return NextResponse.json({ 
       agent: "discovery", 
-      message: "Mi scuso, ho un problema tecnico. Riprova tra un momento.", 
+      message: "Errore tecnico: " + (error instanceof Error ? error.message : "Sconosciuto"), 
       color: "#6475FA" 
     }, { status: 500 });
   }
 }
+
 
