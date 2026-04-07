@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChatMessage, AgentName } from '@/lib/types';
 import ChatWindow from '@/components/ChatWindow';
 
@@ -13,11 +13,43 @@ const WELCOME_MESSAGE: ChatMessage = {
 export type LoadingPhase = 'idle' | 'routing' | 'generating';
 
 export default function Home() {
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
-  const [currentAgent, setCurrentAgent] = useState<AgentName>('discovery');
+  // Initialize state from sessionStorage if available
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('rove-messages');
+      return saved ? JSON.parse(saved) : [WELCOME_MESSAGE];
+    }
+    return [WELCOME_MESSAGE];
+  });
+
+  const [currentAgent, setCurrentAgent] = useState<AgentName>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('rove-agent');
+      return (saved as AgentName) || 'discovery';
+    }
+    return 'discovery';
+  });
+
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('idle');
 
+  // Persist to sessionStorage on changes
+  useEffect(() => {
+    sessionStorage.setItem('rove-messages', JSON.stringify(messages));
+    sessionStorage.setItem('rove-agent', currentAgent);
+  }, [messages, currentAgent]);
+
+  const handleReset = () => {
+    if (confirm('Sei sicuro di voler ricominciare la conversazione?')) {
+      sessionStorage.removeItem('rove-messages');
+      sessionStorage.removeItem('rove-agent');
+      setMessages([WELCOME_MESSAGE]);
+      setCurrentAgent('discovery');
+      setLoadingPhase('idle');
+    }
+  };
+
   const handleSend = async (messageContent: string) => {
+
     if (!messageContent.trim()) return;
 
     const newUserMessage: ChatMessage = { role: 'user', content: messageContent };
@@ -106,8 +138,10 @@ export default function Home() {
         messages={messages} 
         currentAgent={currentAgent} 
         loadingPhase={loadingPhase} 
-        onSend={handleSend} 
+        onSend={handleSend}
+        onReset={handleReset}
       />
     </main>
+
   );
 }
