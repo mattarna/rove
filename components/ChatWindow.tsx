@@ -46,9 +46,12 @@ export default function ChatWindow({
       </div>
       
       <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 space-y-4">
-        {messages.map((msg, idx) => (
-          <MessageBubble key={idx} message={msg} />
-        ))}
+        {messages.map((msg, idx) => {
+          // Don't render empty assistant bubbles (waiting for stream)
+          if (msg.role === 'assistant' && !msg.content.trim()) return null;
+          return <MessageBubble key={idx} message={msg} />;
+        })}
+
         {loadingPhase === 'routing' && (
           <TypingIndicator message="Rove sta pensando..." />
         )}

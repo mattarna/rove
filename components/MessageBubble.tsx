@@ -6,7 +6,9 @@ import PackageCard from './PackageCard';
 import ComparisonTable from './ComparisonTable';
 
 export default function MessageBubble({ message }: { message: ChatMessage }) {
+  if (!message.content.trim()) return null;
   const isUser = message.role === 'user';
+
   
   return (
     <div className={`flex flex-col mb-6 ${isUser ? 'items-end' : 'items-start'}`}>
