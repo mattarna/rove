@@ -13,6 +13,10 @@ const SALES_HINTS =
 /**
  * Skip the manager LLM when the active agent is likely correct and the user
  * did not introduce obvious handoff signals. Returns null to run full routing.
+ *
+ * Discovery never fast-routes: handoff to Sales/Support depends on full history
+ * (e.g. user says "thanks" after qualification). Keyword checks on the latest
+ * message alone would keep routing stuck on discovery.
  */
 export function tryFastRoute(
   userMessage: string,
@@ -21,10 +25,7 @@ export function tryFastRoute(
   const active: AgentName = currentAgent || 'discovery';
 
   if (active === 'discovery') {
-    if (SUPPORT_HINTS.test(userMessage) || SALES_HINTS.test(userMessage)) {
-      return null;
-    }
-    return 'discovery';
+    return null;
   }
 
   if (active === 'sales') {
