@@ -24,8 +24,18 @@ export function getAgentSystemPrompt(agent: AgentName): string {
   const sharedKbContent = loadKnowledgeBase('03_Shared_KB.md');
   const verticalKbContent = loadKnowledgeBase(kbFile);
 
+  const formattingInstruction = `
+[FORMATTING RULES]
+- Use Markdown for bold (**text**), lists (* item), and headings.
+- Use VERY FEW emojis (max 1 or 2 per message).
+- Keep the tone professional but welcoming.
+- Ensure the output is clean and easy to read.
+`;
+
   return `[SYSTEM PROMPT]
 ${systemPromptContent}
+
+${formattingInstruction}
 
 [SHARED KNOWLEDGE BASE]
 ${sharedKbContent}
@@ -33,3 +43,4 @@ ${sharedKbContent}
 [SPECIALIST KNOWLEDGE BASE]
 ${verticalKbContent}`;
 }
+
