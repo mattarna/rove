@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
     const cleanMessages = truncatedMessages.map(({ role, content }) => ({
       role: role as 'user' | 'assistant',
-      content,
+      content: typeof content === 'string' ? content : String(content ?? ''),
     }));
 
     const result = streamText({

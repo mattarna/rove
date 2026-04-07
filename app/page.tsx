@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { ChatMessage, AgentName } from '@/lib/types';
 import ChatWindow from '@/components/ChatWindow';
 
@@ -72,21 +73,47 @@ export default function Home() {
       setCurrentAgent(agentForReply);
       setLoadingPhase('generating');
 
-      setMessages((prev) => [...prev, { role: 'assistant', content: '', agent: agentForReply }]);
+      // Commit the empty assistant row before any stream chunks arrive; otherwise
+      // batched updates can leave "last message = user" and all deltas are dropped.
+      flushSync(() => {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: '', agent: agentForReply },
+        ]);
+      });
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       if (!reader) throw new Error('No reader');
 
-      // toTextStreamResponse: plain UTF-8 text chunks — append every delta immediately
+      // Aggregate in a local string so each setState always applies the full text so far
+      // (avoids race with React batching / stale closures on chunked updates).
+      let aggregated = '';
+      const patchLastAssistant = (text: string) => {
+        setMessages((prev) => {
+          const next = [...prev];
+          const i = next.length - 1;
+          const last = next[i];
+          if (!last || last.role !== 'assistant') return prev;
+          next[i] = { ...last, content: text };
+          return next;
+        });
+      };
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        if (chunk) appendChunkToLastMessage(chunk);
+        const piece = decoder.decode(value, { stream: true });
+        if (piece) {
+          aggregated += piece;
+          patchLastAssistant(aggregated);
+        }
       }
       const tail = decoder.decode();
-      if (tail) appendChunkToLastMessage(tail);
+      if (tail) {
+        aggregated += tail;
+        patchLastAssistant(aggregated);
+      }
 
       setMessages((prev) => {
         const last = prev[prev.length - 1];
@@ -120,18 +147,6 @@ export default function Home() {
       clearTimeout(timeoutId);
       setLoadingPhase('idle');
     }
-  };
-
-  const appendChunkToLastMessage = (chunk: string) => {
-    setMessages((prev) => {
-      const updated = [...prev];
-      const last = updated[updated.length - 1];
-      if (last && last.role === 'assistant') {
-        last.content += chunk;
-        return [...updated];
-      }
-      return prev;
-    });
   };
 
   return (
