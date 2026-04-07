@@ -53,14 +53,22 @@ export async function POST(req: Request) {
         'Cache-Control': 'no-cache',
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("API Route Error:", error);
+    
+    // Proviamo a estrarre più dettagli dall'errore di Anthropic
+    let detailedError = "Errore sconosciuto";
+    if (error && typeof error === 'object') {
+       detailedError = error.message || JSON.stringify(error);
+    }
+
     return NextResponse.json({ 
       agent: "discovery", 
-      message: "Errore tecnico: " + (error instanceof Error ? error.message : "Sconosciuto"), 
+      message: "Dettagli Errore: " + detailedError, 
       color: "#6475FA" 
     }, { status: 500 });
   }
 }
+
 
 
