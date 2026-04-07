@@ -18,6 +18,8 @@ export default function Home() {
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('idle');
 
   const handleSend = async (messageContent: string) => {
+    if (!messageContent.trim()) return;
+
     const newUserMessage: ChatMessage = { role: 'user', content: messageContent };
     const newMessages = [...messages, newUserMessage];
     setMessages(newMessages);
@@ -33,10 +35,8 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        if (response.status === 429) {
-          throw new Error('Il servizio è momentaneamente sovraccarico. Riprova tra qualche secondo.');
-        }
-        throw new Error('Mi scuso, ho un problema tecnico. Riprova tra un momento.');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Mi scuso, ho un problema tecnico. Riprova tra un momento.');
       }
 
       setLoadingPhase('generating');
@@ -44,7 +44,7 @@ export default function Home() {
       const agentName = (response.headers.get('X-Agent-Name') || currentAgent) as AgentName;
       setCurrentAgent(agentName);
 
-      // Create an empty assistant message entry to append chunks to
+      // Create an empty assistant message entry
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: '', agent: agentName },
@@ -54,34 +54,55 @@ export default function Home() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
 
-      let done = false;
-      while (!done) {
-        const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-        const chunkValue = decoder.decode(value, { stream: !done });
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
         
-        if (chunkValue) {
-          setMessages((prev) => {
-            const updated = [...prev];
-            const lastIdx = updated.length - 1;
-            updated[lastIdx] = {
-              ...updated[lastIdx],
-              content: updated[lastIdx].content + chunkValue,
-            };
-            return updated;
-          });
+        // The Vercel AI SDK protocol sends data as: 0:"message content here"
+        // We need to parse these chunks or simply strip the protocol prefix if present
+        const lines = chunk.split('\n').filter(line => line.trim() !== '');
+        
+        for (const line of lines) {
+          // If the line starts with 0: (text chunk in Vercel protocol)
+          if (line.startsWith('0:')) {
+            try {
+              const text = JSON.parse(line.substring(2));
+              setMessages((prev) => {
+                const updated = [...prev];
+                const lastIdx = updated.length - 1;
+                updated[lastIdx] = {
+                  ...updated[lastIdx],
+                  content: updated[lastIdx].content + text,
+                };
+                return updated;
+              });
+            } catch {
+              // Fallback if JSON parse fails
+              continue;
+            }
+          } 
+          // If it's a raw text chunk (no protocol)
+          else if (!line.match(/^[0-9]:/)) {
+            setMessages((prev) => {
+              const updated = [...prev];
+              const lastIdx = updated.length - 1;
+              updated[lastIdx] = {
+                ...updated[lastIdx],
+                content: updated[lastIdx].content + line,
+              };
+              return updated;
+            });
+          }
         }
       }
 
     } catch (error: any) {
-      // Don't show technical js errors to the user
-      const message = error.message.includes('servizio') || error.message.includes('Mi scuso')
-        ? error.message
-        : 'Mi scuso, ho un problema tecnico. Riprova tra un momento.';
-        
+      console.error("Chat Error:", error);
       const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: message,
+        content: error.message || 'Mi scuso, ho un problema tecnico. Riprova tra un momento.',
         agent: currentAgent
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -101,3 +122,4 @@ export default function Home() {
     </main>
   );
 }
+

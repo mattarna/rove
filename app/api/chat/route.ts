@@ -6,6 +6,13 @@ import { truncateHistory, AGENT_COLORS } from '@/lib/agents';
 import { routeMessage } from '@/lib/manager';
 
 export async function POST(req: Request) {
+  // Check for Anthropic key presence to prevent silent failures
+  if (!process.env.ANTHROPIC_API_KEY && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    return NextResponse.json({ 
+      error: 'API Key missing. Please configure ANTHROPIC_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY in Vercel.' 
+    }, { status: 500 });
+  }
+
   try {
     const body = await req.json();
     const { messages, currentAgent } = body;
@@ -24,13 +31,12 @@ export async function POST(req: Request) {
     const truncatedMessages = truncateHistory(messages, 20);
     const systemMessage = getAgentSystemPrompt(selectedAgent);
 
-    // Strip custom properties (like 'agent') to comply with AI SDK Core message format
+    // Clean messages to strict role/content format
     const cleanMessages = truncatedMessages.map(({ role, content }) => ({
       role,
       content,
     }));
 
-    // Make the LLM call using streamText for the selected agent
     const result = streamText({
       model: getAgentModel(),
       system: systemMessage,
@@ -41,9 +47,11 @@ export async function POST(req: Request) {
       headers: {
         'X-Agent-Name': selectedAgent,
         'X-Agent-Color': AGENT_COLORS[selectedAgent] || AGENT_COLORS.discovery,
+        'Cache-Control': 'no-cache',
       },
     });
   } catch (error) {
+
     console.error("API Route Error:", error);
     return NextResponse.json({ 
       agent: "discovery", 
