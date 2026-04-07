@@ -5,6 +5,7 @@ import { ChatMessage, AgentName } from '@/lib/types';
 import ChatInput from './ChatInput';
 import MessageBubble from './MessageBubble';
 import AgentIndicator from './AgentIndicator';
+import TypingIndicator from './TypingIndicator';
 import { LoadingPhase } from '@/app/page';
 
 export default function ChatWindow({
@@ -31,19 +32,15 @@ export default function ChatWindow({
         <AgentIndicator agentName={currentAgent} />
       </div>
       
-      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 space-y-2">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 space-y-4">
         {messages.map((msg, idx) => (
           <MessageBubble key={idx} message={msg} />
         ))}
         {loadingPhase === 'routing' && (
-          <div className="flex mb-6 text-sm text-gray-400 italic">
-            Sto analizzando la tua richiesta...
-          </div>
+          <TypingIndicator message="Rove sta pensando..." />
         )}
         {loadingPhase === 'generating' && messages[messages.length - 1]?.role !== 'assistant' && (
-          <div className="flex mb-6 text-sm text-gray-400 italic">
-            <AgentIndicator agentName={currentAgent} />
-          </div>
+          <TypingIndicator agentName={currentAgent} message="L'agente sta scrivendo..." />
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -54,3 +51,4 @@ export default function ChatWindow({
     </div>
   );
 }
+
