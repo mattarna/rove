@@ -60,7 +60,7 @@ export default function ChatWindow({
             <TypingIndicator message="ROVE sta analizzando la tua richiesta..." />
           </div>
         )}
-        {loadingPhase === 'generating' && messages[messages.length - 1]?.role !== 'assistant' && (
+        {(loadingPhase === 'generating' || (messages[messages.length - 1]?.role === 'assistant' && !messages[messages.length - 1]?.content)) && (
           <TypingIndicator agentName={currentAgent} message="L'agente sta scrivendo..." />
         )}
         <div ref={messagesEndRef} />
