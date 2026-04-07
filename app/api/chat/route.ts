@@ -5,26 +5,23 @@ import { getAgentSystemPrompt } from '@/lib/prompts';
 import { truncateHistory, AGENT_COLORS } from '@/lib/agents';
 import { routeMessage } from '@/lib/manager';
 
+// Force Edge Runtime for instant streaming
+export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
-  // Check for API Keys
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-    return NextResponse.json({ 
-      error: 'API Key missing. Please configure GOOGLE_GENERATIVE_AI_API_KEY in Vercel.' 
-    }, { status: 500 });
+    return NextResponse.json({ error: 'API Key missing.' }, { status: 500 });
   }
 
   try {
     const body = await req.json();
     const { messages, currentAgent } = body;
 
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json({ error: 'Valid messages array is required' }, { status: 400 });
-    }
-
     const latestUserMessage = messages[messages.length - 1].content;
     const historyForManager = messages.slice(0, -1);
 
-    // Step 1 - Manager routing
+    // Step 1 - Manager routing (This takes 1-2s)
     const selectedAgent = await routeMessage(latestUserMessage, currentAgent, historyForManager);
 
     // Step 2 - Agent generating response (streaming)
@@ -42,20 +39,18 @@ export async function POST(req: Request) {
       messages: cleanMessages,
     });
 
-    // Return simple text stream response as requested in the brief
-    return new Response(result.textStream, {
+    // Use toTextStreamResponse for the most robust Vercel streaming
+    return result.toTextStreamResponse({
       headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
         'X-Agent': selectedAgent,
-        'X-Agent-Color': AGENT_COLORS[selectedAgent] || AGENT_COLORS.discovery,
-        'Cache-Control': 'no-cache',
+        'X-Agent-Color': AGENT_COLORS[selectedAgent],
+        'X-Accel-Buffering': 'no', // Disable buffering on Nginx/Cloudflare
+        'Cache-Control': 'no-cache, no-transform',
       },
     });
 
   } catch (error: any) {
     console.error("API Route Error:", error);
-    return NextResponse.json({ 
-      error: error.message || "Errore sconosciuto durante la generazione." 
-    }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

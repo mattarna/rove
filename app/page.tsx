@@ -13,7 +13,6 @@ const WELCOME_MESSAGE: ChatMessage = {
 export type LoadingPhase = 'idle' | 'routing' | 'generating';
 
 export default function Home() {
-  // Initialize state from sessionStorage if available
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = sessionStorage.getItem('rove-messages');
@@ -32,7 +31,6 @@ export default function Home() {
 
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('idle');
 
-  // Persist to sessionStorage on changes
   useEffect(() => {
     sessionStorage.setItem('rove-messages', JSON.stringify(messages));
     sessionStorage.setItem('rove-agent', currentAgent);
@@ -57,45 +55,52 @@ export default function Home() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: newMessages,
-          currentAgent,
-        }),
+        body: JSON.stringify({ messages: newMessages, currentAgent }),
       });
 
-      if (!response.ok) {
-        throw new Error('Errore tecnico durante la chiamata.');
-      }
+      if (!response.ok) throw new Error('Errore tecnico.');
 
       const agent = response.headers.get('X-Agent') as AgentName || currentAgent;
       setCurrentAgent(agent);
       setLoadingPhase('generating');
 
-      // Create empty assistant message, then fill it as stream arrives
-      const assistantMessage: ChatMessage = { role: 'assistant', content: '', agent };
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages(prev => [...prev, { role: 'assistant', content: '', agent }]);
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
+      if (!reader) throw new Error("No reader");
 
-      if (!reader) throw new Error("No response reader");
-
+      let buffer = '';
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
         
-        appendChunkToLastMessage(chunk);
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep partial line in buffer
+
+        for (const line of lines) {
+          // AI SDK protocol parsing (0:"word")
+          if (line.startsWith('0:')) {
+            try {
+              const text = JSON.parse(line.substring(2));
+              appendChunkToLastMessage(text);
+            } catch (e) { /* ignore partial/bad json */ }
+          } else if (line.trim() && !line.match(/^[0-9]:/)) {
+            // Fallback for raw text
+            appendChunkToLastMessage(line + '\n');
+          }
+        }
+      }
+      
+      // Handle remaining buffer
+      if (buffer.startsWith('0:')) {
+         try { appendChunkToLastMessage(JSON.parse(buffer.substring(2))); } catch (e) {}
       }
 
     } catch (error: any) {
-      console.error("Chat Error:", error);
-      const errorMessage: ChatMessage = {
-        role: 'assistant',
-        content: error.message || 'Mi scuso, ho un problema tecnico. Riprova tra un momento.',
-        agent: currentAgent
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      console.error(error);
+      setMessages(p => [...p, { role: 'assistant', content: 'Errore tecnico. Riprova.', agent: currentAgent }]);
     } finally {
       setLoadingPhase('idle');
     }
@@ -104,12 +109,12 @@ export default function Home() {
   const appendChunkToLastMessage = (chunk: string) => {
     setMessages((prev) => {
       const updated = [...prev];
-      const lastIdx = updated.length - 1;
-      updated[lastIdx] = {
-        ...updated[lastIdx],
-        content: updated[lastIdx].content + chunk,
-      };
-      return updated;
+      const last = updated[updated.length - 1];
+      if (last && last.role === 'assistant') {
+        last.content += chunk;
+        return [...updated];
+      }
+      return prev;
     });
   };
 
