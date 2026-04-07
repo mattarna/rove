@@ -5,7 +5,7 @@ import { getAgentSystemPrompt } from '@/lib/prompts';
 import { truncateHistory, AGENT_COLORS } from '@/lib/agents';
 import { routeMessage } from '@/lib/manager';
 
-// Use Node.js runtime to allow 'fs' access for knowledge base files
+// Use standard Node.js runtime to allow 'fs' access for knowledge base files
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     const latestUserMessage = messages[messages.length - 1].content;
     const historyForManager = messages.slice(0, -1);
 
-    // Step 1 - Manager routing (This takes 1-2s)
+    // Step 1 - Manager routing
     const selectedAgent = await routeMessage(latestUserMessage, currentAgent, historyForManager);
 
     // Step 2 - Agent generating response (streaming)
@@ -38,12 +38,11 @@ export async function POST(req: Request) {
       messages: cleanMessages,
     });
 
-    // Use toTextStreamResponse for the most robust Vercel streaming
     return result.toTextStreamResponse({
       headers: {
         'X-Agent': selectedAgent,
         'X-Agent-Color': AGENT_COLORS[selectedAgent],
-        'X-Accel-Buffering': 'no', // Disable buffering on Nginx/Cloudflare
+        'X-Accel-Buffering': 'no',
         'Cache-Control': 'no-cache, no-transform',
       },
     });

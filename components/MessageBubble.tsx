@@ -16,11 +16,12 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
         </div>
       )}
       <div
-        className={`max-w-[85%] px-6 py-4 rounded-3xl leading-relaxed transition-all duration-300 message-shadow
+        className={`max-w-[95%] px-5 py-3 rounded-2xl leading-relaxed shadow-sm
           ${isUser 
-            ? 'user-bubble rounded-tr-none' 
-            : 'ai-bubble rounded-tl-none text-slate-800'
+            ? 'bg-blue-600 text-white rounded-tr-none' 
+            : 'bg-white text-gray-800 border-gray-100 rounded-tl-none'
           }`}
+        style={!isUser && message.agent ? { borderLeft: `2px solid ${AGENT_COLORS[message.agent] || AGENT_COLORS.discovery}` } : undefined}
       >
         <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:mb-2 prose-ul:my-1 prose-pre:bg-transparent prose-pre:p-0">
           <ReactMarkdown
@@ -65,5 +66,3 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
     </div>
   );
 }
-
-

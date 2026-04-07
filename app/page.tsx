@@ -77,28 +77,24 @@ export default function Home() {
         
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep partial line in buffer
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
-          // AI SDK protocol parsing (0:"word")
           if (line.startsWith('0:')) {
             try {
               const text = JSON.parse(line.substring(2));
               appendChunkToLastMessage(text);
-            } catch (e) { /* ignore partial/bad json */ }
+            } catch (e) {}
           } else if (line.trim() && !line.match(/^[0-9]:/)) {
-            // Fallback for raw text
             appendChunkToLastMessage(line + '\n');
           }
         }
       }
       
-      // Handle remaining buffer
       if (buffer.trim()) {
         if (buffer.startsWith('0:')) {
            try { appendChunkToLastMessage(JSON.parse(buffer.substring(2))); } catch (e) {}
         } else if (!buffer.match(/^[0-9]:/)) {
-           // If it doesn't match any marker, treat as raw text
            appendChunkToLastMessage(buffer);
         }
       }
@@ -124,7 +120,7 @@ export default function Home() {
   };
 
   return (
-    <main className="max-w-4xl mx-auto h-[90vh] my-[5vh] p-4 md:p-0 flex flex-col">
+    <main className="max-w-2xl mx-auto h-screen p-0 md:p-8">
       <ChatWindow 
         messages={messages} 
         currentAgent={currentAgent} 
