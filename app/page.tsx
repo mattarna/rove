@@ -119,7 +119,7 @@ export default function Home() {
   };
 
   return (
-    <main className="max-w-2xl mx-auto h-screen p-0 md:p-8">
+    <main className="max-w-4xl mx-auto h-[90vh] my-[5vh] p-4 md:p-0 flex flex-col">
       <ChatWindow 
         messages={messages} 
         currentAgent={currentAgent} 

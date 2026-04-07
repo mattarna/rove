@@ -5,8 +5,7 @@ import { getAgentSystemPrompt } from '@/lib/prompts';
 import { truncateHistory, AGENT_COLORS } from '@/lib/agents';
 import { routeMessage } from '@/lib/manager';
 
-// Force Edge Runtime for instant streaming
-export const runtime = 'edge';
+// Use Node.js runtime to allow 'fs' access for knowledge base files
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
