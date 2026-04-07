@@ -124,10 +124,16 @@ export async function routeMessage(
 
   try {
     // Use only the last 10 messages for the Manager — lightweight routing call
-    const recentHistory = history.slice(-10).map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const recentHistory = history.slice(-10).map((m) => {
+      const entry: { role: string; content: string; agent?: AgentName } = {
+        role: m.role,
+        content: m.content,
+      };
+      if (m.role === 'assistant' && m.agent) {
+        entry.agent = m.agent;
+      }
+      return entry;
+    });
 
     // Format input as JSON string per the Manager prompt's expected input format
     const managerInput = JSON.stringify({
