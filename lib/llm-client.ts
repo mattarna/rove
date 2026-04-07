@@ -2,8 +2,9 @@
 
 // --- CLAUDE (Anthropic) ---
 import { anthropic } from '@ai-sdk/anthropic';
-export const getManagerModel = () => anthropic('claude-3-5-haiku-latest');
-export const getAgentModel = () => anthropic('claude-3-5-haiku-latest');
+export const getManagerModel = () => anthropic('claude-haiku-4-5-20251001');
+export const getAgentModel = () => anthropic('claude-sonnet-4-6-20250415');
+
 
 
 // --- GEMINI (Google) ---
