@@ -47,6 +47,21 @@ export function shouldForceSales(
   return discoveryTurnsAfter >= 2;
 }
 
+/** Matches user messages that confirm payment has been made. */
+const PAYMENT_CONFIRMED =
+  /ho\s+pagat|have\s+paye?d|payment\s+(done|made|completed|confirmed)|pagamento\s+(effettuat|completat|eseguit|fatto)|già\s+pagat|already\s+paid|paid\s+the\s+deposit|versato\s+(l['']?acconto|il\s+deposit)/i;
+
+/**
+ * Code-level lock: once any user message in history confirms payment,
+ * every subsequent message routes to Support. The sale is closed.
+ * The only escape is "new trip" language, handled by tryFastRoute before this.
+ */
+export function shouldForceSupport(history: ChatMessage[]): boolean {
+  return history.some(
+    (m) => m.role === 'user' && PAYMENT_CONFIRMED.test(m.content)
+  );
+}
+
 /**
  * Skip the manager LLM when the active agent is likely correct and the user
  * did not introduce obvious handoff signals. Returns null to run full routing.
@@ -162,6 +177,12 @@ export async function routeMessage(
   const fast = tryFastRoute(userMessage, currentAgent);
   if (fast !== null) {
     return fast;
+  }
+
+  // Code-level lock: once payment is confirmed, stay on Support permanently
+  // (tryFastRoute already handles "new trip" escape before this check)
+  if (shouldForceSupport(history)) {
+    return 'support';
   }
 
   // Code-level Path D: force Sales if Discovery is looping after comparison
