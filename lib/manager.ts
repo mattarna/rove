@@ -174,15 +174,21 @@ export async function routeMessage(
 ): Promise<AgentName> {
   const fallback: AgentName = currentAgent || 'discovery';
 
+  // "New trip" escape — checked first, even after payment lock
+  const isNewTrip =
+    /nuovo\s+viaggio|altro\s+viaggio|da\s+capo|ripartire|ricominciare|new\s+trip|start\s+over|another\s+trip|from\s+scratch/i.test(
+      userMessage
+    );
+
+  // Code-level lock: once payment is confirmed, stay on Support permanently
+  // Only "new trip" language can break out of this lock
+  if (!isNewTrip && shouldForceSupport(history)) {
+    return 'support';
+  }
+
   const fast = tryFastRoute(userMessage, currentAgent);
   if (fast !== null) {
     return fast;
-  }
-
-  // Code-level lock: once payment is confirmed, stay on Support permanently
-  // (tryFastRoute already handles "new trip" escape before this check)
-  if (shouldForceSupport(history)) {
-    return 'support';
   }
 
   // Code-level Path D: force Sales if Discovery is looping after comparison
