@@ -11,6 +11,43 @@ const SALES_HINTS =
   /prezz|costo|€|\beuro\b|prenot|compr|pacchett|offerta|sconto|pagament|quotaz|acconto|price|cost|\$|\busd\b|\beur\b|book|buy|package|offer|discount|payment|deposit|quot(e|ation)/i;
 
 /**
+ * Code-level safety net: if Discovery has been responding 2+ turns
+ * after showing the comparison block, qualification is done — force Sales.
+ * Runs on the FULL history (not truncated to 10), so the comparison block
+ * is always visible regardless of conversation length.
+ */
+export function shouldForceSales(
+  currentAgent: AgentName | null,
+  history: ChatMessage[]
+): boolean {
+  if (currentAgent !== 'discovery') return false;
+
+  // Find the index of the last comparison block in history
+  let comparisonIndex = -1;
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (
+      history[i].role === 'assistant' &&
+      /```comparison/i.test(history[i].content)
+    ) {
+      comparisonIndex = i;
+      break;
+    }
+  }
+
+  if (comparisonIndex === -1) return false;
+
+  // Count Discovery assistant messages AFTER the comparison block
+  let discoveryTurnsAfter = 0;
+  for (let i = comparisonIndex + 1; i < history.length; i++) {
+    if (history[i].role === 'assistant' && history[i].agent === 'discovery') {
+      discoveryTurnsAfter++;
+    }
+  }
+
+  return discoveryTurnsAfter >= 2;
+}
+
+/**
  * Skip the manager LLM when the active agent is likely correct and the user
  * did not introduce obvious handoff signals. Returns null to run full routing.
  *
@@ -125,6 +162,11 @@ export async function routeMessage(
   const fast = tryFastRoute(userMessage, currentAgent);
   if (fast !== null) {
     return fast;
+  }
+
+  // Code-level Path D: force Sales if Discovery is looping after comparison
+  if (shouldForceSales(currentAgent, history)) {
+    return 'sales';
   }
 
   try {
