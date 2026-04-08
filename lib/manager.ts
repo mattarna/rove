@@ -6,7 +6,7 @@ import { isValidAgent } from './agents';
 
 /** When these match, intent likely needs full manager routing (handoff). IT + EN. */
 const SUPPORT_HINTS =
-  /rimborso|reclamo|problema|non\s+funziona|volo\s+cancell|cancellat|assistenza|post[\s-]?vendita|ho\s+gi[aà]\s+(comprat|acquist|prenot)|prenotazione\s+confermata|bagaglio\s+perso|check-?in|refund|complaint|problem|after[\s-]?sales|already\s+(bought|booked)|lost\s+luggage|confirmed\s+booking/i;
+  /rimborso|reclamo|problema|non\s+funziona|volo\s+cancell|cancellat|assistenza|post[\s-]?vendita|ho\s+gi[aà]\s+(comprat|acquist|prenot|pagat)|prenotazione\s+confermata|bagaglio\s+perso|check-?in|refund|complaint|problem|after[\s-]?sales|already\s+(bought|booked|paid|payed)|lost\s+luggage|confirmed\s+booking|ho\s+pagat|have\s+payed|have\s+paid|pagamento\s+(effettuat|completat|eseguit)|payment\s+(done|made|completed|confirmed)/i;
 const SALES_HINTS =
   /prezz|costo|€|\beuro\b|prenot|compr|pacchett|offerta|sconto|pagament|quotaz|acconto|price|cost|\$|\busd\b|\beur\b|book|buy|package|offer|discount|payment|deposit|quot(e|ation)/i;
 

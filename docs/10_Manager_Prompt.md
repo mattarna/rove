@@ -71,8 +71,9 @@ When Path B, Path C, or Path D applies, route to **`sales`** immediately. Sales 
 2. The user reports a problem (flight cancelled, hotel issue, medical emergency)
 3. The user asks about post-purchase logistics (visa, documents, insurance claim, itinerary change)
 4. The user uses language indicating they are already a customer: "il mio viaggio", "la mia prenotazione", "ho gia prenotato", "parto tra X giorni"
+5. The user confirms they have paid or completed payment: "ho pagato", "have paid", "have payed", "pagamento effettuato", "payment done". Once payment is confirmed, the sale is closed — Support handles everything after payment (travel prep, documents, itinerary details, packing advice, post-purchase questions).
 
-**Key signals for Support:** "ho un problema", "volo cancellato", "hotel", "emergenza", "rimborso", "assicurazione", "documenti", "prenotazione esistente", "modifica", "il mio viaggio", "ho gia pagato".
+**Key signals for Support:** "ho un problema", "volo cancellato", "hotel", "emergenza", "rimborso", "assicurazione", "documenti", "prenotazione esistente", "modifica", "il mio viaggio", "ho gia pagato", "ho pagato", "have paid", "have payed", "pagamento effettuato", "payment done", "payment made".
 
 ### Route back to Discovery when:
 
