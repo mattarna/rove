@@ -56,47 +56,52 @@ export function getManagerSystemPrompt(): string {
   return loadKnowledgeBase('10_Manager_Prompt.md');
 }
 
+/** First ```json ... ``` (or ``` ... ```) block in the text, inner content trimmed; else null. */
+function extractMarkdownFenceInner(text: string): string | null {
+  const m = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  return m ? m[1].trim() : null;
+}
+
+/** Top-level JSON `"agent"` string value; safe when `reason` contains `}` or the word "discovery". */
+const MANAGER_AGENT_FIELD_RE = /"agent"\s*:\s*"([^"]+)"/;
+
 /**
  * Safely parses the Manager Agent's raw text response into a valid AgentName.
  *
- * Handles 3 levels of fallback to account for LLM "chatty" behaviour:
- *   1. Direct JSON.parse — ideal case
- *   2. Regex extraction — handles preamble text or markdown fences around JSON
- *   3. String search — handles plain-text agent name in the response
- *   4. Final fallback — returns currentAgent or 'discovery'
+ * Fallback chain for LLM output that is not strict JSON:
+ *   1. JSON.parse on trimmed text, then on a ```json``` fence inner blob if present
+ *   2. Regex: first `"agent":"…"` field only (no brittle `{[^}]*}` scan)
+ *   3. Final fallback — currentAgent or 'discovery'
+ *
+ * Avoids matching the substring "discovery" inside `reason` (e.g. "last message from discovery")
+ * which previously forced the wrong agent when JSON.parse failed.
  */
 export function safeParseManagerResponse(
   rawText: string,
   currentAgent: AgentName | null
 ): AgentName {
   const fallback: AgentName = currentAgent || 'discovery';
+  const trimmed = rawText.trim();
+  const fencedInner = extractMarkdownFenceInner(trimmed);
+  const parseCandidates: string[] = [trimmed];
+  if (fencedInner) parseCandidates.unshift(fencedInner);
 
-  // Attempt 1: Direct JSON parse (ideal case)
-  try {
-    const parsed = JSON.parse(rawText);
-    if (parsed?.agent && isValidAgent(parsed.agent)) {
-      return parsed.agent as AgentName;
-    }
-  } catch {
-    // Not valid JSON — continue to next attempt
-  }
-
-  // Attempt 2: Regex extraction — find {"agent":"..."} even inside surrounding text
-  // Handles cases like: ```json\n{"agent":"sales",...}\n``` or "Here is the routing: {...}"
-  const jsonMatch = rawText.match(/\{[^}]*"agent"\s*:\s*"([^"]+)"[^}]*\}/);
-  if (jsonMatch?.[1] && isValidAgent(jsonMatch[1])) {
-    return jsonMatch[1] as AgentName;
-  }
-
-  // Attempt 3: Simple string search — handles plain-text like "The agent is discovery"
-  const agentNames: AgentName[] = ['discovery', 'sales', 'support'];
-  for (const agent of agentNames) {
-    if (rawText.toLowerCase().includes(agent)) {
-      return agent;
+  for (const candidate of parseCandidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (parsed?.agent && isValidAgent(parsed.agent)) {
+        return parsed.agent as AgentName;
+      }
+    } catch {
+      // try next candidate or regex
     }
   }
 
-  // Final fallback: return current agent to maintain stability
+  const agentMatch = trimmed.match(MANAGER_AGENT_FIELD_RE);
+  if (agentMatch?.[1] && isValidAgent(agentMatch[1])) {
+    return agentMatch[1] as AgentName;
+  }
+
   return fallback;
 }
 
